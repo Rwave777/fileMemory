@@ -10,6 +10,7 @@ class FileRow(ft.DataRow):
         self.filename = filename
         self.filepath = filepath
         self.tags = tags
+        self.created_at = created_at
         self.file_manager = file_manager
         self.page = page
 
@@ -42,7 +43,6 @@ class FileRow(ft.DataRow):
             ft.DataCell(
                 ft.Text(tags if tags else ""), on_double_tap=self.show_edit_dialog
             ),
-            ft.DataCell(ft.Text(created_at)),
             ft.DataCell(
                 ft.IconButton(
                     icon=ft.icons.DELETE,
@@ -133,6 +133,7 @@ class FileRow(ft.DataRow):
             value=self.tags if self.tags else "",
             width=400,
         )
+        created_at_text = ft.Text(f"作成日時: {self.created_at}")
 
         def save_changes(e):
             if e.control.result:
@@ -175,7 +176,13 @@ class FileRow(ft.DataRow):
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("ファイル情報の編集"),
             content=ft.Column(
-                [filename_field, filepath_field, tags_field],
+                [
+                    created_at_text,
+                    ft.Divider(),
+                    filename_field,
+                    filepath_field,
+                    tags_field,
+                ],
                 spacing=10,
                 width=400,
             ),
@@ -203,22 +210,21 @@ class FileListPage:
 
     def init_components(self):
         self.search_field = ft.TextField(
-            label="ファイル名で検索", width=400, on_change=self.search_files
+            label="ファイル名で検索", width=300, on_change=self.search_files
         )
 
         self.tag_filter = ft.TextField(
-            label="タグで検索", width=400, on_change=self.search_files
+            label="タグで検索", width=300, on_change=self.search_files
         )
 
         # DataTableの設定を調整
         self.files_table = ft.DataTable(
             columns=[
-                ft.DataColumn(ft.Container(ft.Text("種類"), width=50)),
-                ft.DataColumn(ft.Container(ft.Text("ファイル名"), width=100)),
-                ft.DataColumn(ft.Container(ft.Text("パス"), width=300)),
-                ft.DataColumn(ft.Container(ft.Text("タグ"), width=200)),
-                ft.DataColumn(ft.Container(ft.Text("作成日時"), width=150)),
-                ft.DataColumn(ft.Container(ft.Text("操作"), width=50)),  # 削除列を追加
+                ft.DataColumn(ft.Container(ft.Text("種類"), width=30)),
+                ft.DataColumn(ft.Container(ft.Text("ファイル名"), width=80)),
+                ft.DataColumn(ft.Container(ft.Text("パス"), width=200)),
+                ft.DataColumn(ft.Container(ft.Text("タグ"), width=100)),
+                ft.DataColumn(ft.Container(ft.Text("操作"), width=50)),
             ],
             rows=[],
             horizontal_margin=10,
@@ -227,18 +233,28 @@ class FileListPage:
 
     def build(self, page: ft.Page):
         self._load_files_data(page)
-        return ft.Column(
-            [
-                ft.Row([self.search_field, self.tag_filter]),
-                ft.Container(
-                    content=self.files_table,
-                    border=ft.border.all(1, ft.colors.GREY_300),
-                    border_radius=10,
-                    padding=10,
-                    expand=True,
-                ),
-            ],
-            scroll=ft.ScrollMode.AUTO,  # Columnにスクロールを追加
+        return ft.Container(  # Containerでラップ
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [self.search_field, self.tag_filter],
+                        alignment=ft.MainAxisAlignment.START,  # 左寄せ
+                    ),
+                    ft.Row(
+                        [
+                            ft.Container(
+                                content=self.files_table,
+                                border=ft.border.all(1, ft.colors.GREY_300),
+                                expand=True,
+                            )
+                        ],
+                        scroll="auto",
+                    ),
+                ],
+                spacing=20,  # 要素間の間隔を設定
+                expand=True,
+                alignment=ft.MainAxisAlignment.START,  # 上寄せ
+            ),
             expand=True,
         )
 
