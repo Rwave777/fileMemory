@@ -6,13 +6,11 @@ class FileRegisterPage:
     def __init__(self, file_manager):
         self.file_manager = file_manager
         self.success_message = ft.Text("", color=ft.colors.GREEN)
+        self.file_picker = None
+        self.folder_picker = None
         self.init_components()
 
     def init_components(self):
-        # ファイルピッカーの設定
-        self.file_picker = None  # mainで初期化
-        self.folder_picker = None  # mainで初期化
-
         # タグ入力
         self.tag_input = ft.TextField(
             label="タグ（カンマ区切り）",
@@ -33,12 +31,12 @@ class FileRegisterPage:
                         [
                             ft.ElevatedButton(
                                 "ファイルを選択",
-                                on_click=lambda _: self.file_picker.pick_files(),
+                                on_click=self.pick_files,
                                 icon=ft.icons.FILE_UPLOAD,
                             ),
                             ft.ElevatedButton(
                                 "フォルダを選択",
-                                on_click=lambda _: self.folder_picker.get_directory_path(),
+                                on_click=self.pick_folder,
                                 icon=ft.icons.FOLDER_OPEN,
                             ),
                         ],
@@ -62,6 +60,16 @@ class FileRegisterPage:
             on_accept=self.on_drop,
             on_will_accept=lambda e: e.data.startswith("files://") if e.data else False,
         )
+
+    def pick_files(self, _):
+        """ファイル選択ダイアログを表示"""
+        if self.file_picker:
+            self.file_picker.pick_files()
+
+    def pick_folder(self, _):
+        """フォルダ選択ダイアログを表示"""
+        if self.folder_picker:
+            self.folder_picker.get_directory_path()
 
     def build(self, page: ft.Page):
         # ファイルピッカーの初期化

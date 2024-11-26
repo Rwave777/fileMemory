@@ -20,40 +20,41 @@ class MainApp:
 
         # ナビゲーションレール
         self.rail = ft.NavigationRail(
-            selected_index=0,
-            label_type=ft.NavigationRailLabelType.ALL,
-            min_width=100,
-            min_extended_width=400,
-            group_alignment=-0.9,
             destinations=[
                 ft.NavigationRailDestination(
                     icon=ft.icons.UPLOAD_FILE,
-                    selected_icon=ft.icons.UPLOAD_FILE,
-                    label="ファイル登録",
+                    label_content=ft.Text("ファイル登録"),
                 ),
                 ft.NavigationRailDestination(
                     icon=ft.icons.FILE_COPY,
-                    selected_icon=ft.icons.FILE_COPY,
-                    label="ファイル一覧",
+                    label_content=ft.Text("ファイル一覧"),
                 ),
                 ft.NavigationRailDestination(
                     icon=ft.icons.STORAGE,
-                    selected_icon=ft.icons.STORAGE,
-                    label="DB情報",
+                    label_content=ft.Text("DB情報"),
                 ),
             ],
+            selected_index=0,
             on_change=lambda e: self.change_page(e),
         )
 
         # コンテンツエリア
         self.content_area = ft.Container(
-            content=self.file_register_page.build(page), padding=20
+            content=self.file_register_page.build(page),
+            padding=20,
+            expand=True,
         )
 
         # レイアウト
         page.add(
             ft.Row(
-                [self.rail, ft.VerticalDivider(width=1), self.content_area], expand=True
+                [
+                    self.rail,
+                    ft.VerticalDivider(width=1),
+                    self.content_area,
+                ],
+                expand=True,
+                spacing=0,
             )
         )
 
