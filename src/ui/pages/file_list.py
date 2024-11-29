@@ -1,10 +1,22 @@
 import flet as ft
 import os
+from util.util_query import insert_file_joined
 
 
 class FileRow(ft.DataRow):
+    ACTION_EDIT = 1
+    ACTION_DELETE = 2
+
     def __init__(
-        self, file_id, filename, filepath, tags, created_at, page, file_manager
+        self,
+        file_id,
+        filename,
+        filepath,
+        tags,
+        created_at,
+        page,
+        file_manager,
+        action_callback,
     ):
         self.file_id = file_id
         self.filename = filename
@@ -13,6 +25,7 @@ class FileRow(ft.DataRow):
         self.created_at = created_at
         self.file_manager = file_manager
         self.page = page
+        self.action_callback: function = action_callback
 
         # ファイルかフォルダかでアイコンを変更
         icon = (
@@ -76,20 +89,14 @@ class FileRow(ft.DataRow):
                 with conn:
                     cursor = conn.cursor()
                     cursor.execute(
-                        "DELETE FROM tags WHERE file_id = ?", (self.file_id,)
+                        "DELETE FROM file_tags WHERE file_id = ?", (self.file_id,)
                     )
                     cursor.execute("DELETE FROM files WHERE id = ?", (self.file_id,))
                 conn.close()
-                # データベース情報ページの更新
-                if hasattr(self.page, "database_info_page"):
-                    self.page.database_info_page.update_info()
-                # テーブルを更新
-                if hasattr(self.page, "file_list_page"):
-                    self.page.file_list_page._load_files_data(self.page)
-                    self.page.file_list_page.build(self.page)  # 画面を再描画
                 # ダイアログを閉じる
                 self.page.dialog.open = False
                 self.page.update()
+                self.action_callback(self.ACTION_DELETE)
 
         # 削除確認ダイアログを表示
         self.page.dialog = ft.AlertDialog(
@@ -149,29 +156,21 @@ class FileRow(ft.DataRow):
                         (filename_field.value, filepath_field.value, self.file_id),
                     )
                     cursor.execute(
-                        "DELETE FROM tags WHERE file_id = ?", (self.file_id,)
+                        "DELETE FROM file_tags WHERE file_id = ?", (self.file_id,)
                     )
                     new_tags = [
                         tag.strip()
                         for tag in tags_field.value.split(",")
                         if tag.strip()
                     ]
-                    for tag in new_tags:
-                        cursor.execute(
-                            "INSERT INTO tags (file_id, tag_name) VALUES (?, ?)",
-                            (self.file_id, tag),
-                        )
+                    for index, tag in enumerate(new_tags):
+                        insert_file_joined(cursor, self.file_id, tag, index)
+
                 conn.close()
-                # テータベース情報ページの更新
-                if hasattr(self.page, "database_info_page"):
-                    self.page.database_info_page.update_info()
-                # テーブルを更新
-                if hasattr(self.page, "file_list_page"):
-                    self.page.file_list_page._load_files_data(self.page)
-                    self.page.file_list_page.build(self.page)  # 画面を再描画
                 # ダイアログを閉じる
                 self.page.dialog.open = False
                 self.page.update()
+                self.action_callback(self.ACTION_EDIT)
 
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("ファイル情報の編集"),
@@ -207,6 +206,8 @@ class FileListPage:
     def __init__(self, file_manager):
         self.file_manager = file_manager
         self.init_components()
+        self.files = []
+        self.sort_ascending = True
 
     def init_components(self):
         self.search_field = ft.TextField(
@@ -221,18 +222,30 @@ class FileListPage:
         self.files_table = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Container(ft.Text("種類"), width=30)),
-                ft.DataColumn(ft.Container(ft.Text("ファイル名"), width=80)),
-                ft.DataColumn(ft.Container(ft.Text("パス"), width=200)),
-                ft.DataColumn(ft.Container(ft.Text("タグ"), width=100)),
+                ft.DataColumn(
+                    ft.Container(ft.Text("ファイル名"), width=80),
+                    on_sort=self.sort_function,
+                ),
+                ft.DataColumn(
+                    ft.Container(ft.Text("パス"), width=200),
+                    on_sort=self.sort_function,
+                ),
+                ft.DataColumn(
+                    ft.Container(ft.Text("タグ"), width=100),
+                    on_sort=self.sort_function,
+                ),
                 ft.DataColumn(ft.Container(ft.Text("操作"), width=50)),
             ],
             rows=[],
             horizontal_margin=10,
             horizontal_lines=ft.BorderSide(1, ft.colors.GREY_300),
+            # ソート関連のパラメータ
+            sort_column_index=1,  # デフォルトでソートする列のインデックス
+            sort_ascending=True,  # デフォルトの昇順/降順
         )
 
     def build(self, page: ft.Page):
-        self._load_files_data(page)
+        self.search_files()
         return ft.Container(  # Containerでラップ
             content=ft.Column(
                 [
@@ -258,45 +271,7 @@ class FileListPage:
             expand=True,
         )
 
-    def _load_files_data(self, page):
-        """ファイルデータを読み込んでテーブルを更新"""
-        conn = self.file_manager.create_connection()
-        with conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT 
-                    f.id, 
-                    f.filename, 
-                    f.filepath, 
-                    GROUP_CONCAT(t.tag_name) as tags,
-                    f.created_at
-                FROM files f
-                LEFT JOIN tags t ON f.id = t.file_id
-                GROUP BY f.id
-                ORDER BY f.created_at DESC
-                """
-            )
-            files = cursor.fetchall()
-
-            # テーブルの行を更新
-            self.files_table.rows = [
-                FileRow(
-                    file_id=file[0],
-                    filename=file[1],
-                    filepath=file[2],
-                    tags=file[3],
-                    created_at=file[4],
-                    page=page,
-                    file_manager=self.file_manager,
-                )
-                for file in files
-            ]
-        conn.close()
-        if self.files_table.page:
-            self.files_table.update()
-
-    def search_files(self, e):
+    def search_files(self, page=None):
         """検索条件でファイル一覧を絞り込み"""
         search_text = self.search_field.value.lower()
         tag_text = self.tag_filter.value.lower()
@@ -312,30 +287,66 @@ class FileListPage:
                     GROUP_CONCAT(t.tag_name) as tags,
                     f.created_at
                 FROM files f
-                LEFT JOIN tags t ON f.id = t.file_id
+                LEFT JOIN file_tags j ON f.id = j.file_id
+                LEFT JOIN tag_mng t ON j.tag_id = t.id
                 GROUP BY f.id
                 HAVING (? = '' OR LOWER(f.filename) LIKE ?)
                 AND (? = '' OR LOWER(tags) LIKE ?)
-                ORDER BY f.created_at DESC
+                ORDER BY f.filename, j.number_of
             """
             cursor.execute(
                 query, (search_text, f"%{search_text}%", tag_text, f"%{tag_text}%")
             )
-            files = cursor.fetchall()
+            self.files = cursor.fetchall()
 
-            # 検索結果でテーブルを更新
-            self.files_table.rows = [
-                FileRow(
-                    file_id=file[0],
-                    filename=file[1],
-                    filepath=file[2],
-                    tags=file[3],
-                    created_at=file[4],
-                    page=self.files_table.page,
-                    file_manager=self.file_manager,
-                )
-                for file in files
-            ]
         conn.close()
+        # 検索結果でテーブルを更新
+        self.set_files_table()
+
+    def sort_function(self, e):
+        if e.control.parent.sort_column_index != e.column_index:
+            e.control.parent.__setattr__("sort_ascending", False)
+            e.control.parent.update()
+
+        self.files.sort(
+            key=lambda x: x[e.column_index] if x[e.column_index] else "",
+            reverse=e.control.parent.sort_ascending,
+        )
+        # 検索結果でテーブルを更新
+        self.set_files_table()
+        # インデックス更新
+        e.control.parent.__setattr__("sort_column_index", e.column_index)
+
+        # フラグ更新
+        (
+            e.control.parent.__setattr__("sort_ascending", False)
+            if e.control.parent.sort_ascending
+            else e.control.parent.__setattr__("sort_ascending", True)
+        )
+        e.control.parent.update()
+
+    def set_files_table(self):
+        # 検索結果でテーブルを更新
+        self.files_table.rows = [
+            FileRow(
+                file_id=file[0],
+                filename=file[1],
+                filepath=file[2],
+                tags=file[3],
+                created_at=file[4],
+                page=self.files_table.page,
+                file_manager=self.file_manager,
+                action_callback=self.wrap_action,
+            )
+            for file in self.files
+        ]
         if self.files_table.page:
             self.files_table.update()
+
+    def wrap_action(self, action):
+        # FileRowクラスのaction_callbackのラッパー
+        if action == FileRow.ACTION_EDIT:
+            pass
+        elif action == FileRow.ACTION_DELETE:
+            pass
+        self.search_files()

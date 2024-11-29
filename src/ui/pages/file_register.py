@@ -1,5 +1,6 @@
 import flet as ft
 import os
+from util.util_query import insert_file_joined
 
 
 class FileRegisterPage:
@@ -26,7 +27,7 @@ class FileRegisterPage:
         drop_content = ft.Container(
             content=ft.Column(
                 [
-                    ft.Text("ファイルまたはフォルダをドロップ", size=20),
+                    ft.Text("ファイルまたはフォルダをドロップ(機能未提供)", size=20),
                     ft.Row(
                         [
                             ft.ElevatedButton(
@@ -75,10 +76,16 @@ class FileRegisterPage:
         # ファイルピッカーの初期化
         self.file_picker = ft.FilePicker(on_result=self.on_file_picker_result)
         self.folder_picker = ft.FilePicker(on_result=self.on_folder_picker_result)
-        page.overlay.extend([self.file_picker, self.folder_picker])
 
         return ft.Column(
-            [self.drop_area, self.tag_input, self.submit_button, self.success_message]
+            [
+                self.drop_area,
+                self.file_picker,
+                self.folder_picker,
+                self.tag_input,
+                self.submit_button,
+                self.success_message,
+            ]
         )
 
     # イベントハンドラ
@@ -108,6 +115,7 @@ class FileRegisterPage:
         if hasattr(self, "current_file_path"):
             path = self.current_file_path
             name = os.path.basename(path)
+
             tags = [
                 tag.strip() for tag in self.tag_input.value.split(",") if tag.strip()
             ]
@@ -121,11 +129,9 @@ class FileRegisterPage:
                 )
                 file_id = cursor.lastrowid
 
-                for tag in tags:
-                    cursor.execute(
-                        "INSERT INTO tags (file_id, tag_name) VALUES (?, ?)",
-                        (file_id, tag),
-                    )
+                for index, tag in enumerate(tags):
+                    insert_file_joined(cursor, file_id, tag, index)
+
             conn.close()
 
             self.tag_input.value = ""

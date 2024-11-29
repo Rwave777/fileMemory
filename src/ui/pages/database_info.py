@@ -124,7 +124,6 @@ class DatabaseInfoPage:
             ],
             rows=[],
         )
-        self._update_info_text()
 
     def build(self, page: ft.Page):
         self._update_table_list(page)  # テーブル一覧を更新
@@ -174,39 +173,6 @@ class DatabaseInfoPage:
                     TableInfoRow(table_name, count, page, self.file_manager)
                 )
         conn.close()
-
-    def _update_info_text(self):
-        conn = self.file_manager.create_connection()
-        with conn:
-            cursor = conn.cursor()
-
-            # ファイル数を取得
-            cursor.execute("SELECT COUNT(*) FROM files")
-            file_count = cursor.fetchone()[0]
-
-            # タグ数を取得
-            cursor.execute("SELECT COUNT(DISTINCT tag_name) FROM tags")
-            tag_count = cursor.fetchone()[0]
-
-            # データベースファイルのパスと容量を取得
-            db_path = os.path.abspath(self.file_manager.db_path)
-
-        conn.close()
-
-        self.db_path.value = f"データベースの場所: {db_path}"
-        self.file_count.value = f"登録ファイル数: {file_count}"
-        self.tag_count.value = f"ユニークタグ数: {tag_count}"
-
-    def update_info(self):
-        """情報を更新"""
-        self._update_info_text()
-        if self.db_path.page:
-            self.db_path.update()
-            self.file_count.update()
-            self.tag_count.update()
-            if hasattr(self, "table_list") and self.table_list.page:
-                self._update_table_list(self.table_list.page)
-                self.table_list.update()
 
     def open_db_location(self, e):
         db_path = os.path.abspath(self.file_manager.db_path)
