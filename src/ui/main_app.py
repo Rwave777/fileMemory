@@ -11,12 +11,12 @@ class MainApp:
         self.file_register_page = FileRegisterPage(self.file_manager)
         self.file_list_page = FileListPage(self.file_manager)
         self.database_info_page = DatabaseInfoPage(self.file_manager)
-        self.selec_index_page = 0
+        self.select_index_page = 0
 
     def main(self, page: ft.Page):
         page.title = "ファイル管理アプリ"
         page.padding = 0
-        page.window_width = 800
+        page.window_width = 1000
         page.window_height = 600
 
         # ナビゲーションレール
@@ -60,12 +60,12 @@ class MainApp:
         )
 
     def change_page(self, e):
-        if self.selec_index_page == e.control.selected_index:
+        if self.select_index_page == e.control.selected_index:
             return
-        self.selec_index_page = e.control.selected_index
-        if self.selec_index_page == 0:
+        self.select_index_page = e.control.selected_index
+        if self.select_index_page == 0:
             self.content_area.content = self.file_register_page.build(e.page)
-        elif self.selec_index_page == 1:
+        elif self.select_index_page == 1:
             self.content_area.content = self.file_list_page.build(e.page)
         else:
             self.content_area.content = self.database_info_page.build(e.page)

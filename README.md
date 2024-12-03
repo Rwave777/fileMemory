@@ -23,3 +23,9 @@ pip install pyinstaller==5.13.2
 ```python
 flet run src -r
 ```
+
+### パッケージビルド
+```python
+flet pack src/main.py --name filePathMemory --file-version 1.0.0.0
+```
+

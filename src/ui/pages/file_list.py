@@ -13,6 +13,7 @@ class FileRow(ft.DataRow):
         filename,
         filepath,
         tags,
+        reg_tags,
         created_at,
         page,
         file_manager,
@@ -22,10 +23,13 @@ class FileRow(ft.DataRow):
         self.filename = filename
         self.filepath = filepath
         self.tags = tags
+        self.reg_tags = reg_tags
         self.created_at = created_at
         self.file_manager = file_manager
         self.page = page
         self.action_callback: function = action_callback
+
+        self.tags_clone = self.tags if self.tags else []
 
         # ファイルかフォルダかでアイコンを変更
         icon = (
@@ -126,7 +130,7 @@ class FileRow(ft.DataRow):
     def show_edit_dialog(self, e):
         """編集ダイアログを表示"""
         filename_field = ft.TextField(
-            label="ファイル名",
+            label="名称",
             value=self.filename,
             width=400,
         )
@@ -135,11 +139,18 @@ class FileRow(ft.DataRow):
             value=self.filepath,
             width=400,
         )
-        tags_field = ft.TextField(
-            label="タグ（カンマ区切り）",
-            value=self.tags if self.tags else "",
+
+        # タグを表示するためのコンテナ
+        tags_container = ft.Container(
+            content=ft.Row(controls=[], spacing=5, wrap=True),
+            border=ft.border.all(1, ft.colors.GREY_400),
+            border_radius=5,
+            padding=10,
             width=400,
         )
+
+        self.update_tags_container(tags_container)
+
         created_at_text = ft.Text(f"作成日時: {self.created_at}")
 
         def save_changes(e):
@@ -159,9 +170,7 @@ class FileRow(ft.DataRow):
                         "DELETE FROM file_tags WHERE file_id = ?", (self.file_id,)
                     )
                     new_tags = [
-                        tag.strip()
-                        for tag in tags_field.value.split(",")
-                        if tag.strip()
+                        tag.strip() for tag in self.tags_clone.split(",") if tag.strip()
                     ]
                     for index, tag in enumerate(new_tags):
                         insert_file_joined(cursor, self.file_id, tag, index)
@@ -172,6 +181,10 @@ class FileRow(ft.DataRow):
                 self.page.update()
                 self.action_callback(self.ACTION_EDIT)
 
+        def cancel():
+            self.tags_clone = self.tags
+            self.close_dialog(None)
+
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("ファイル情報の編集"),
             content=ft.Column(
@@ -180,18 +193,19 @@ class FileRow(ft.DataRow):
                     ft.Divider(),
                     filename_field,
                     filepath_field,
-                    tags_field,
+                    tags_container,
                 ],
                 spacing=10,
                 width=400,
             ),
             actions=[
-                ft.TextButton("キャンセル", on_click=lambda e: self.close_dialog(e)),
                 ft.TextButton(
                     "保存", on_click=lambda e: self.handle_save(e, save_changes)
                 ),
+                ft.TextButton("キャンセル", on_click=lambda e: cancel()),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
+            modal=True,
         )
         self.page.dialog.open = True
         self.page.update()
@@ -201,17 +215,94 @@ class FileRow(ft.DataRow):
         e.control.result = True
         callback(e)
 
+    def update_tags_container(self, container: ft.Container):
+        """タグコンテナを更新"""
+        container.content.controls = [
+            ft.Chip(
+                label=ft.Text(tag.strip()),
+                on_delete=lambda _: self.remove_tag(tag.strip(), container),
+            )
+            for tag in (self.tags_clone.split(",") if self.tags_clone else [])
+        ]
+        container.content.controls.append(
+            ft.IconButton(
+                icon=ft.icons.ADD, on_click=lambda _: self.show_tag_dialog(container)
+            )
+        )
+
+    def remove_tag(self, tag: str, container: ft.Container):
+        """タグを削除"""
+        self.tags_clone = ",".join(
+            [t for t in self.tags_clone.split(",") if t.strip() != tag]
+        )
+        self.update_tags_container(container)
+        self.page.update()
+
+    def show_tag_dialog(self, container):
+        def handle_tap(e):
+            search_bar.open_view()
+
+        def select_tag(e):
+            text = e.control.data
+            # search_bar.value = text
+            search_bar.close_view(text)
+
+        """タグ追加ダイアログを表示"""
+        search_bar = ft.SearchBar(
+            bar_hint_text="新しいタグを入力",
+            on_submit=lambda e: self.add_tag(e.control.value, container),
+            controls=[
+                ft.ListTile(
+                    title=ft.Text(item[1] if item[1] else ""),
+                    on_click=select_tag,
+                    data=item[1] if item[1] else "",
+                )
+                for item in self.reg_tags
+            ],
+            on_tap=handle_tap,
+        )
+
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text("タグの追加"),
+            content=ft.Column([search_bar]),
+            actions=[
+                ft.TextButton(
+                    "追加", on_click=lambda e: self.add_tag(search_bar.value, container)
+                ),
+                ft.TextButton(
+                    "閉じる", on_click=lambda e: self.close_tag_dialog(e, container)
+                ),
+            ],
+        )
+        self.page.dialog.open = True
+        self.page.update()
+
+    def add_tag(self, new_tag, container: ft.Container):
+        """新しいタグを追加"""
+        if new_tag and new_tag not in self.tags_clone:
+            self.tags_clone = (
+                f"{self.tags_clone},{new_tag}" if self.tags_clone else new_tag
+            )
+            self.update_tags_container(container)
+        self.show_edit_dialog(None)
+
+    def close_tag_dialog(self, e, container: ft.Container):
+        """タグダイアログを閉じる"""
+        self.update_tags_container(container)
+        self.show_edit_dialog(e)
+
 
 class FileListPage:
     def __init__(self, file_manager):
         self.file_manager = file_manager
         self.init_components()
         self.files = []
+        self.tags = []
         self.sort_ascending = True
 
     def init_components(self):
         self.search_field = ft.TextField(
-            label="ファイル名で検索", width=300, on_change=self.search_files
+            label="名称で検索", width=300, on_change=self.search_files
         )
 
         self.tag_filter = ft.TextField(
@@ -223,7 +314,7 @@ class FileListPage:
             columns=[
                 ft.DataColumn(ft.Container(ft.Text("種類"), width=30)),
                 ft.DataColumn(
-                    ft.Container(ft.Text("ファイル名"), width=80),
+                    ft.Container(ft.Text("名称"), width=80),
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(
@@ -245,7 +336,9 @@ class FileListPage:
         )
 
     def build(self, page: ft.Page):
+        self.search_tags()
         self.search_files()
+
         return ft.Container(  # Containerでラップ
             content=ft.Column(
                 [
@@ -325,6 +418,26 @@ class FileListPage:
         )
         e.control.parent.update()
 
+    def search_tags(self, page=None):
+        conn = self.file_manager.create_connection()
+        with conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT 
+                    mng.id, 
+                    mng.tag_name,
+                    count(j.file_id) AS count
+                FROM tag_mng mng
+                LEFT JOIN file_tags j ON mng.id = j.tag_id
+                GROUP BY mng.id, mng.tag_name    
+                ORDER BY count desc, mng.tag_name
+            """
+            cursor.execute(
+                query,
+            )
+            self.tags = cursor.fetchall()
+        conn.close()
+
     def set_files_table(self):
         # 検索結果でテーブルを更新
         self.files_table.rows = [
@@ -333,6 +446,7 @@ class FileListPage:
                 filename=file[1],
                 filepath=file[2],
                 tags=file[3],
+                reg_tags=self.tags,
                 created_at=file[4],
                 page=self.files_table.page,
                 file_manager=self.file_manager,
