@@ -16,7 +16,7 @@ class MainApp:
     def main(self, page: ft.Page):
         page.title = "ファイル管理アプリ"
         page.padding = 0
-        page.window_width = 1000
+        page.window_width = 1200
         page.window_height = 600
 
         # ナビゲーションレール

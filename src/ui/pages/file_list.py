@@ -29,7 +29,7 @@ class FileRow(ft.DataRow):
         self.page = page
         self.action_callback: function = action_callback
 
-        self.tags_clone = self.tags if self.tags else []
+        self.tags_clone = self.tags if self.tags else ""
 
         # ファイルかフォルダかでアイコンを変更
         icon = (
@@ -48,17 +48,40 @@ class FileRow(ft.DataRow):
                     on_click=lambda e: self.open_location(filepath),
                 )
             ),
-            ft.DataCell(ft.Text(filename), on_double_tap=self.show_edit_dialog),
             ft.DataCell(
-                ft.TextButton(
-                    text=filepath,
-                    tooltip="パスをコピー",
-                    on_click=lambda e: self.copy_path(filepath),
+                ft.Text(
+                    filename,
+                    no_wrap=True,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    text_align=ft.TextAlign.LEFT,
+                    width=120,
                 ),
                 on_double_tap=self.show_edit_dialog,
             ),
             ft.DataCell(
-                ft.Text(tags if tags else ""), on_double_tap=self.show_edit_dialog
+                ft.Text(
+                    tags if tags else "",
+                    no_wrap=True,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    text_align=ft.TextAlign.LEFT,
+                    width=100,
+                ),
+                on_double_tap=self.show_edit_dialog,
+            ),
+            ft.DataCell(
+                ft.TextButton(
+                    content=ft.Text(
+                        filepath,
+                        no_wrap=True,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        text_align=ft.TextAlign.LEFT,
+                    ),
+                    tooltip=f"'{filepath}'をコピー",
+                    on_click=lambda e: self.copy_path(filepath),
+                    width=250,
+                    style=ft.ButtonStyle(alignment=ft.alignment.center_left),
+                ),
+                on_double_tap=self.show_edit_dialog,
             ),
             ft.DataCell(
                 ft.IconButton(
@@ -314,15 +337,15 @@ class FileListPage:
             columns=[
                 ft.DataColumn(ft.Container(ft.Text("種類"), width=30)),
                 ft.DataColumn(
-                    ft.Container(ft.Text("名称"), width=80),
-                    on_sort=self.sort_function,
-                ),
-                ft.DataColumn(
-                    ft.Container(ft.Text("パス"), width=200),
+                    ft.Container(ft.Text("名称"), width=120),
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(
                     ft.Container(ft.Text("タグ"), width=100),
+                    on_sort=self.sort_function,
+                ),
+                ft.DataColumn(
+                    ft.Container(ft.Text("パス"), width=250),
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(ft.Container(ft.Text("操作"), width=50)),
@@ -333,12 +356,12 @@ class FileListPage:
             # ソート関連のパラメータ
             sort_column_index=1,  # デフォルトでソートする列のインデックス
             sort_ascending=True,  # デフォルトの昇順/降順
+            border=ft.border.all(1, ft.colors.GREY_200),
         )
 
     def build(self, page: ft.Page):
         self.search_tags()
         self.search_files()
-
         return ft.Container(  # Containerでラップ
             content=ft.Column(
                 [
@@ -348,10 +371,11 @@ class FileListPage:
                     ),
                     ft.Row(
                         [
-                            ft.Container(
-                                content=self.files_table,
-                                border=ft.border.all(1, ft.colors.GREY_300),
+                            ft.Column(
+                                controls=[self.files_table],
+                                scroll=ft.ScrollMode.ALWAYS,
                                 expand=True,
+                                height=450,
                             )
                         ],
                         scroll="auto",
@@ -378,6 +402,7 @@ class FileListPage:
                     f.filename, 
                     f.filepath, 
                     GROUP_CONCAT(t.tag_name) as tags,
+                    f.memo,
                     f.created_at
                 FROM files f
                 LEFT JOIN file_tags j ON f.id = j.file_id
