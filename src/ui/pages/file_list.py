@@ -29,6 +29,8 @@ class FileRow(ft.DataRow):
         self.page = page
         self.action_callback: function = action_callback
 
+        self.filename_clone = filename
+        self.filepath_clone = filepath
         self.tags_clone = self.tags if self.tags else ""
 
         # ファイルかフォルダかでアイコンを変更
@@ -54,7 +56,9 @@ class FileRow(ft.DataRow):
                     no_wrap=True,
                     overflow=ft.TextOverflow.ELLIPSIS,
                     text_align=ft.TextAlign.LEFT,
-                    width=120,
+                    width=140,
+                    size=12,
+                    tooltip=filename,
                 ),
                 on_double_tap=self.show_edit_dialog,
             ),
@@ -65,6 +69,7 @@ class FileRow(ft.DataRow):
                     overflow=ft.TextOverflow.ELLIPSIS,
                     text_align=ft.TextAlign.LEFT,
                     width=100,
+                    size=12,
                 ),
                 on_double_tap=self.show_edit_dialog,
             ),
@@ -75,6 +80,7 @@ class FileRow(ft.DataRow):
                         no_wrap=True,
                         overflow=ft.TextOverflow.ELLIPSIS,
                         text_align=ft.TextAlign.LEFT,
+                        size=12,
                     ),
                     tooltip=f"'{filepath}'をコピー",
                     on_click=lambda e: self.copy_path(filepath),
@@ -151,16 +157,18 @@ class FileRow(ft.DataRow):
         callback(e)
 
     def show_edit_dialog(self, e):
+        def file_update(e):
+            self.filename_clone = e.control.value
+
+        def path_update(e):
+            self.filename_clone = e.control.value
+
         """編集ダイアログを表示"""
         filename_field = ft.TextField(
-            label="名称",
-            value=self.filename,
-            width=400,
+            label="名称", value=self.filename_clone, width=400, on_change=file_update
         )
         filepath_field = ft.TextField(
-            label="パス",
-            value=self.filepath,
-            width=400,
+            label="パス", value=self.filepath_clone, width=400, on_change=path_update
         )
 
         # タグを表示するためのコンテナ
@@ -203,8 +211,12 @@ class FileRow(ft.DataRow):
                 self.page.dialog.open = False
                 self.page.update()
                 self.action_callback(self.ACTION_EDIT)
+                self.filename = self.filename_clone
+                self.filepath = self.filepath_clone
 
         def cancel():
+            self.filename_clone = self.filename
+            self.filepath_clone = self.filepath
             self.tags_clone = self.tags
             self.close_dialog(None)
 
@@ -323,13 +335,37 @@ class FileListPage:
         self.tags = []
         self.sort_ascending = True
 
+    def clear_text(self, text_field: ft.TextField):
+        text_field.value = ""
+        text_field.update()
+        self.search_files()
+
     def init_components(self):
+
         self.search_field = ft.TextField(
-            label="名称で検索", width=300, on_change=self.search_files
+            label="名称で検索",
+            width=300,
+            on_change=self.search_files,
+            suffix=ft.IconButton(
+                icon=ft.icons.CLEAR,
+                padding=ft.padding.all(0),
+                visual_density=ft.VisualDensity.COMPACT,
+                on_click=lambda e: self.clear_text(self.search_field),
+            ),
+            dense=True,
         )
 
         self.tag_filter = ft.TextField(
-            label="タグで検索", width=300, on_change=self.search_files
+            label="タグで検索",
+            width=300,
+            on_change=self.search_files,
+            suffix=ft.IconButton(
+                icon=ft.icons.CLEAR,
+                padding=ft.padding.all(0),
+                visual_density=ft.VisualDensity.COMPACT,
+                on_click=lambda e: self.clear_text(self.tag_filter),
+            ),
+            dense=True,
         )
 
         # DataTableの設定を調整
