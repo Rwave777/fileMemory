@@ -13,6 +13,7 @@ class FileRow(ft.DataRow):
         filename,
         filepath,
         tags,
+        memo,
         reg_tags,
         created_at,
         page,
@@ -22,6 +23,7 @@ class FileRow(ft.DataRow):
         self.file_id = file_id
         self.filename = filename
         self.filepath = filepath
+        self.memo = memo
         self.tags = tags
         self.reg_tags = reg_tags
         self.created_at = created_at
@@ -31,6 +33,7 @@ class FileRow(ft.DataRow):
 
         self.filename_clone = filename
         self.filepath_clone = filepath
+        self.memo_clone = memo
         self.tags_clone = self.tags if self.tags else ""
 
         # ファイルかフォルダかでアイコンを変更
@@ -56,7 +59,6 @@ class FileRow(ft.DataRow):
                     no_wrap=True,
                     overflow=ft.TextOverflow.ELLIPSIS,
                     text_align=ft.TextAlign.LEFT,
-                    width=140,
                     size=12,
                     tooltip=filename,
                 ),
@@ -86,6 +88,17 @@ class FileRow(ft.DataRow):
                     on_click=lambda e: self.copy_path(filepath),
                     width=250,
                     style=ft.ButtonStyle(alignment=ft.alignment.center_left),
+                ),
+                on_double_tap=self.show_edit_dialog,
+            ),
+            ft.DataCell(
+                ft.Text(
+                    memo,
+                    no_wrap=True,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    text_align=ft.TextAlign.LEFT,
+                    size=12,
+                    tooltip=memo,
                 ),
                 on_double_tap=self.show_edit_dialog,
             ),
@@ -161,7 +174,10 @@ class FileRow(ft.DataRow):
             self.filename_clone = e.control.value
 
         def path_update(e):
-            self.filename_clone = e.control.value
+            self.filepath_clone = e.control.value
+
+        def memo_update(e):
+            self.memo_clone = e.control.value
 
         """編集ダイアログを表示"""
         filename_field = ft.TextField(
@@ -170,7 +186,13 @@ class FileRow(ft.DataRow):
         filepath_field = ft.TextField(
             label="パス", value=self.filepath_clone, width=400, on_change=path_update
         )
-
+        memo_field = ft.TextField(
+            label="メモ",
+            value=self.memo_clone,
+            width=400,
+            max_lines=3,
+            on_change=memo_update,
+        )
         # タグを表示するためのコンテナ
         tags_container = ft.Container(
             content=ft.Row(controls=[], spacing=5, wrap=True),
@@ -192,10 +214,15 @@ class FileRow(ft.DataRow):
                     cursor.execute(
                         """
                         UPDATE files 
-                        SET filename = ?, filepath = ?
+                        SET filename = ?, filepath = ?, memo = ?
                         WHERE id = ?
                         """,
-                        (filename_field.value, filepath_field.value, self.file_id),
+                        (
+                            filename_field.value,
+                            filepath_field.value,
+                            memo_field.value,
+                            self.file_id,
+                        ),
                     )
                     cursor.execute(
                         "DELETE FROM file_tags WHERE file_id = ?", (self.file_id,)
@@ -213,10 +240,12 @@ class FileRow(ft.DataRow):
                 self.action_callback(self.ACTION_EDIT)
                 self.filename = self.filename_clone
                 self.filepath = self.filepath_clone
+                self.memo = self.memo_clone
 
         def cancel():
             self.filename_clone = self.filename
             self.filepath_clone = self.filepath
+            self.memo_clone = self.memo
             self.tags_clone = self.tags
             self.close_dialog(None)
 
@@ -228,6 +257,7 @@ class FileRow(ft.DataRow):
                     ft.Divider(),
                     filename_field,
                     filepath_field,
+                    memo_field,
                     tags_container,
                 ],
                 spacing=10,
@@ -282,10 +312,14 @@ class FileRow(ft.DataRow):
             # search_bar.value = text
             search_bar.close_view(text)
 
+        # def submit_tag(e):
+        #     e.control.close_view(e.control.value)
+        #     # self.add_tag(e.control.value, container)
+
         """タグ追加ダイアログを表示"""
         search_bar = ft.SearchBar(
             bar_hint_text="新しいタグを入力",
-            on_submit=lambda e: self.add_tag(e.control.value, container),
+            # on_submit=lambda e: submit_tag(e),
             controls=[
                 ft.ListTile(
                     title=ft.Text(item[1] if item[1] else ""),
@@ -330,10 +364,10 @@ class FileRow(ft.DataRow):
 class FileListPage:
     def __init__(self, file_manager):
         self.file_manager = file_manager
-        self.init_components()
         self.files = []
         self.tags = []
         self.sort_ascending = True
+        self.init_components()
 
     def clear_text(self, text_field: ft.TextField):
         text_field.value = ""
@@ -341,7 +375,7 @@ class FileListPage:
         self.search_files()
 
     def init_components(self):
-
+        self.search_tags()
         self.search_field = ft.TextField(
             label="名称で検索",
             width=300,
@@ -368,6 +402,31 @@ class FileListPage:
             dense=True,
         )
 
+        def tag_select(text):
+            self.tag_filter.value = text
+            self.tag_filter.update()
+            self.search_files()
+
+        self.tag_view_btn = ft.PopupMenuButton(
+            content=ft.Icon(name=ft.icons.FILTER_LIST_ALT),
+            items=[
+                ft.PopupMenuItem(
+                    content=ft.Row(
+                        [
+                            ft.Icon(name=ft.icons.TAG),
+                            ft.Text(
+                                value=tag[1],
+                                color=ft.colors.PRIMARY,
+                            ),
+                        ]
+                    ),
+                    on_click=lambda e: tag_select(e.control.content.controls[1].value),
+                )
+                for tag in self.tags
+            ],
+            on_open=lambda e: e.control.parent.update(),
+        )
+
         # DataTableの設定を調整
         self.files_table = ft.DataTable(
             columns=[
@@ -384,6 +443,10 @@ class FileListPage:
                     ft.Container(ft.Text("パス"), width=250),
                     on_sort=self.sort_function,
                 ),
+                ft.DataColumn(
+                    ft.Container(ft.Text("メモ"), width=250),
+                    on_sort=self.sort_function,
+                ),
                 ft.DataColumn(ft.Container(ft.Text("操作"), width=50)),
             ],
             rows=[],
@@ -393,6 +456,7 @@ class FileListPage:
             sort_column_index=1,  # デフォルトでソートする列のインデックス
             sort_ascending=True,  # デフォルトの昇順/降順
             border=ft.border.all(1, ft.colors.GREY_200),
+            column_spacing=10,
         )
 
     def build(self, page: ft.Page):
@@ -402,7 +466,7 @@ class FileListPage:
             content=ft.Column(
                 [
                     ft.Row(
-                        [self.search_field, self.tag_filter],
+                        [self.search_field, self.tag_filter, self.tag_view_btn],
                         alignment=ft.MainAxisAlignment.START,  # 左寄せ
                     ),
                     ft.Row(
@@ -507,8 +571,9 @@ class FileListPage:
                 filename=file[1],
                 filepath=file[2],
                 tags=file[3],
+                memo=file[4],
                 reg_tags=self.tags,
-                created_at=file[4],
+                created_at=file[5],
                 page=self.files_table.page,
                 file_manager=self.file_manager,
                 action_callback=self.wrap_action,
