@@ -64,8 +64,17 @@ class RecordsDialog(ft.AlertDialog):
                 for record in records
             ],
         )
-
-        self.content = records_data
+        self.content = ft.Row(
+            [
+                ft.Column(
+                    controls=[records_data],
+                    scroll=ft.ScrollMode.ALWAYS,
+                    expand=True,
+                    height=450,
+                )
+            ],
+            scroll="auto",
+        )
 
 
 class TableInfoRow(ft.DataRow):

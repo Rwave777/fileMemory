@@ -285,7 +285,7 @@ class FileRow(ft.DataRow):
         container.content.controls = [
             ft.Chip(
                 label=ft.Text(tag.strip()),
-                on_delete=lambda _: self.remove_tag(tag.strip(), container),
+                on_delete=lambda e: self.remove_tag(e.control.label.value, container),
             )
             for tag in (self.tags_clone.split(",") if self.tags_clone else [])
         ]
@@ -402,30 +402,7 @@ class FileListPage:
             dense=True,
         )
 
-        def tag_select(text):
-            self.tag_filter.value = text
-            self.tag_filter.update()
-            self.search_files()
-
-        self.tag_view_btn = ft.PopupMenuButton(
-            content=ft.Icon(name=ft.icons.FILTER_LIST_ALT),
-            items=[
-                ft.PopupMenuItem(
-                    content=ft.Row(
-                        [
-                            ft.Icon(name=ft.icons.TAG),
-                            ft.Text(
-                                value=tag[1],
-                                color=ft.colors.PRIMARY,
-                            ),
-                        ]
-                    ),
-                    on_click=lambda e: tag_select(e.control.content.controls[1].value),
-                )
-                for tag in self.tags
-            ],
-            on_open=lambda e: e.control.parent.update(),
-        )
+        self.tag_view_btn = self.get_tags_view_btn()
 
         # DataTableの設定を調整
         self.files_table = ft.DataTable(
@@ -583,6 +560,33 @@ class FileListPage:
         if self.files_table.page:
             self.files_table.update()
 
+    def get_tags_view_btn(self):
+        # タグ一覧のPopupMenuButtonを更新
+        def tag_select(text):
+            self.tag_filter.value = text
+            self.tag_filter.update()
+            self.search_files()
+
+        return ft.PopupMenuButton(
+            content=ft.Icon(name=ft.icons.FILTER_LIST_ALT),
+            items=[
+                ft.PopupMenuItem(
+                    content=ft.Row(
+                        [
+                            ft.Icon(name=ft.icons.TAG),
+                            ft.Text(
+                                value=tag[1],
+                                color=ft.colors.PRIMARY,
+                            ),
+                        ]
+                    ),
+                    on_click=lambda e: tag_select(e.control.content.controls[1].value),
+                )
+                for tag in self.tags
+            ],
+            on_open=lambda e: e.control.parent.update(),
+        )
+
     def wrap_action(self, action):
         # FileRowクラスのaction_callbackのラッパー
         if action == FileRow.ACTION_EDIT:
@@ -590,3 +594,7 @@ class FileListPage:
         elif action == FileRow.ACTION_DELETE:
             pass
         self.search_files()
+        self.search_tags()
+        self.tag_view_btn = self.get_tags_view_btn()
+        if self.tag_view_btn.page:
+            self.tag_view_btn.content.update()
