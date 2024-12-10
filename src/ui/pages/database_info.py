@@ -115,7 +115,8 @@ class TableInfoRow(ft.DataRow):
 
 
 class DatabaseInfoPage:
-    def __init__(self, file_manager):
+    def __init__(self, page, file_manager):
+        self.page = page
         self.file_manager = file_manager
         self.init_components()
 

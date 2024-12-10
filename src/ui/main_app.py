@@ -3,14 +3,12 @@ from .pages.file_register import FileRegisterPage
 from .pages.file_list import FileListPage
 from database.file_manager import FileManager
 from .pages.database_info import DatabaseInfoPage
+from .pages.maintenance import MaintenancePage
 
 
 class MainApp:
     def __init__(self):
         self.file_manager = FileManager()
-        self.file_register_page = FileRegisterPage(self.file_manager)
-        self.file_list_page = FileListPage(self.file_manager)
-        self.database_info_page = DatabaseInfoPage(self.file_manager)
         self.select_index_page = 0
 
     def main(self, page: ft.Page):
@@ -18,6 +16,11 @@ class MainApp:
         page.padding = 0
         page.window_width = 1200
         page.window_height = 600
+
+        self.file_register_page = FileRegisterPage(page, self.file_manager)
+        self.file_list_page = FileListPage(page, self.file_manager)
+        self.database_info_page = DatabaseInfoPage(page, self.file_manager)
+        self.maintenance_page = MaintenancePage(page, self.file_manager)
 
         # ナビゲーションレール
         self.rail = ft.NavigationRail(
@@ -33,6 +36,10 @@ class MainApp:
                 ft.NavigationRailDestination(
                     icon=ft.icons.STORAGE,
                     label_content=ft.Text("DB情報"),
+                ),
+                ft.NavigationRailDestination(
+                    icon=ft.icons.SETTINGS,
+                    label_content=ft.Text("メンテナンス"),
                 ),
             ],
             selected_index=0,
@@ -67,6 +74,12 @@ class MainApp:
             self.content_area.content = self.file_register_page.build(e.page)
         elif self.select_index_page == 1:
             self.content_area.content = self.file_list_page.build(e.page)
-        else:
+        elif self.select_index_page == 2:
             self.content_area.content = self.database_info_page.build(e.page)
+        else:
+            self.content_area.content = self.maintenance_page.build(e.page)
         self.content_area.update()
+
+    @property
+    def open_file_checkbox(self):
+        return self.maintenance_page.open_file_checkbox

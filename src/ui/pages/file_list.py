@@ -48,7 +48,7 @@ class FileRow(ft.DataRow):
                     tooltip=(
                         "フォルダを開く"
                         if os.path.isdir(filepath)
-                        else "ファイルの場所を開く"
+                        else "ファイルの場所とファイルを開く"
                     ),
                     on_click=lambda e: self.open_location(filepath),
                 )
@@ -120,6 +120,7 @@ class FileRow(ft.DataRow):
                 os.startfile(path)  # フォルダを直接開く
             else:
                 os.startfile(os.path.dirname(path))  # ファイルの場所を開く
+                os.startfile(path)
 
     def copy_path(self, path):
         """パスをクリップボードにコピー"""
@@ -362,7 +363,8 @@ class FileRow(ft.DataRow):
 
 
 class FileListPage:
-    def __init__(self, file_manager):
+    def __init__(self, page, file_manager):
+        self.page = page
         self.file_manager = file_manager
         self.files = []
         self.tags = []
@@ -439,6 +441,11 @@ class FileListPage:
     def build(self, page: ft.Page):
         self.search_tags()
         self.search_files()
+
+        def on_keyboard(e: ft.KeyboardEvent):
+            print(e.ctrl)
+
+        self.page.on_keyboard_event = on_keyboard
         return ft.Container(  # Containerでラップ
             content=ft.Column(
                 [
@@ -527,12 +534,9 @@ class FileListPage:
             query = """
                 SELECT 
                     mng.id, 
-                    mng.tag_name,
-                    count(j.file_id) AS count
+                    mng.tag_name
                 FROM tag_mng mng
-                LEFT JOIN file_tags j ON mng.id = j.tag_id
-                GROUP BY mng.id, mng.tag_name    
-                ORDER BY count desc, mng.tag_name
+                ORDER BY mng.tag_name
             """
             cursor.execute(
                 query,
@@ -563,6 +567,7 @@ class FileListPage:
     def get_tags_view_btn(self):
         # タグ一覧のPopupMenuButtonを更新
         def tag_select(text):
+            print(self.page)
             self.tag_filter.value = text
             self.tag_filter.update()
             self.search_files()
@@ -573,13 +578,12 @@ class FileListPage:
                 ft.PopupMenuItem(
                     content=ft.Row(
                         [
-                            ft.Icon(name=ft.icons.TAG),
-                            ft.Text(
-                                value=tag[1],
-                                color=ft.colors.PRIMARY,
-                            ),
-                        ]
+                            ft.Icon(name=ft.icons.TAG, size=12),
+                            ft.Text(value=tag[1], color=ft.colors.PRIMARY, size=12),
+                        ],
+                        vertical_alignment=ft.CrossAxisAlignment.END,
                     ),
+                    height=30,
                     on_click=lambda e: tag_select(e.control.content.controls[1].value),
                 )
                 for tag in self.tags

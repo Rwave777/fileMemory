@@ -4,7 +4,8 @@ from util.util_query import insert_file_joined
 
 
 class FileRegisterPage:
-    def __init__(self, file_manager):
+    def __init__(self, page, file_manager):
+        self.page = page
         self.file_manager = file_manager
         self.success_message = ft.Text("", color=ft.colors.GREEN)
         self.file_picker = None
@@ -17,6 +18,16 @@ class FileRegisterPage:
             label="タグ（カンマ区切り）",
             width=400,
         )
+
+        # tags_container = ft.Container(
+        #     content=ft.Row(controls=[], spacing=5, wrap=True),
+        #     border=ft.border.all(1, ft.colors.GREY_400),
+        #     border_radius=5,
+        #     padding=10,
+        #     width=400,
+        # )
+        # self.tag_input = tags_container
+        # self.update_tags_container(tags_container)
 
         # 登録ボタン
         self.submit_button = ft.ElevatedButton(
@@ -60,6 +71,21 @@ class FileRegisterPage:
             content=drop_content,
             on_accept=self.on_drop,
             on_will_accept=lambda e: e.data.startswith("files://") if e.data else False,
+        )
+
+    def update_tags_container(self, container: ft.Container):
+        """タグコンテナを更新"""
+        container.content.controls = [
+            ft.Chip(
+                label=ft.Text(tag.strip()),
+                on_delete=lambda _: self.remove_tag(tag.strip(), container),
+            )
+            for tag in (self.tags_clone.split(",") if self.tags_clone else [])
+        ]
+        container.content.controls.append(
+            ft.IconButton(
+                icon=ft.icons.ADD, on_click=lambda _: self.show_tag_dialog(container)
+            )
         )
 
     def pick_files(self, _):
