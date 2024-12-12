@@ -79,8 +79,8 @@ class FileRow(ft.DataRow):
                 ft.TextButton(
                     content=ft.Text(
                         filepath,
-                        no_wrap=True,
-                        overflow=ft.TextOverflow.ELLIPSIS,
+                        # no_wrap=True,
+                        # overflow=ft.TextOverflow.ELLIPSIS,
                         text_align=ft.TextAlign.LEFT,
                         size=12,
                     ),
@@ -143,7 +143,7 @@ class FileRow(ft.DataRow):
                 # ダイアログを閉じる
                 self.page.dialog.open = False
                 self.page.update()
-                self.action_callback(self.ACTION_DELETE)
+                self.action_callback(self.ACTION_DELETE, self.page)
 
         # 削除確認ダイアログを表示
         self.page.dialog = ft.AlertDialog(
@@ -238,7 +238,7 @@ class FileRow(ft.DataRow):
                 # ダイアログを閉じる
                 self.page.dialog.open = False
                 self.page.update()
-                self.action_callback(self.ACTION_EDIT)
+                self.action_callback(self.ACTION_EDIT, self.page)
                 self.filename = self.filename_clone
                 self.filepath = self.filepath_clone
                 self.memo = self.memo_clone
@@ -438,14 +438,11 @@ class FileListPage:
             column_spacing=10,
         )
 
-    def build(self, page: ft.Page):
+    def build(self, con: ft.Container):
         self.search_tags()
         self.search_files()
-
-        def on_keyboard(e: ft.KeyboardEvent):
-            print(e.ctrl)
-
-        self.page.on_keyboard_event = on_keyboard
+        self.content_area = con
+        self.tag_view_btn = self.get_tags_view_btn()
         return ft.Container(  # Containerでラップ
             content=ft.Column(
                 [
@@ -567,10 +564,15 @@ class FileListPage:
     def get_tags_view_btn(self):
         # タグ一覧のPopupMenuButtonを更新
         def tag_select(text):
-            print(self.page)
             self.tag_filter.value = text
             self.tag_filter.update()
             self.search_files()
+
+        # def tag_open():
+        #     print("押下")
+        #     self.search_tags()
+        #     self.tag_view_btn = self.get_tags_view_btn()
+        #     self.tag_view_btn.update()
 
         return ft.PopupMenuButton(
             content=ft.Icon(name=ft.icons.FILTER_LIST_ALT),
@@ -588,17 +590,14 @@ class FileListPage:
                 )
                 for tag in self.tags
             ],
-            on_open=lambda e: e.control.parent.update(),
+            # on_open=lambda e: tag_open(),
         )
 
-    def wrap_action(self, action):
+    def wrap_action(self, action, page: ft.Page):
         # FileRowクラスのaction_callbackのラッパー
         if action == FileRow.ACTION_EDIT:
             pass
         elif action == FileRow.ACTION_DELETE:
             pass
         self.search_files()
-        self.search_tags()
-        self.tag_view_btn = self.get_tags_view_btn()
-        if self.tag_view_btn.page:
-            self.tag_view_btn.content.update()
+        page.update()
