@@ -12,7 +12,7 @@ class MainApp:
         self.select_index_page = 0
 
     def main(self, page: ft.Page):
-        page.title = "ファイル管理アプリ"
+        page.title = "パス管理"
         page.padding = 0
         page.window_width = 1200
         page.window_height = 600
@@ -71,13 +71,13 @@ class MainApp:
             return
         self.select_index_page = e.control.selected_index
         if self.select_index_page == 0:
-            self.content_area.content = self.file_register_page.build(e.page)
+            self.content_area.content = self.file_register_page.build(self.content_area)
         elif self.select_index_page == 1:
-            self.content_area.content = self.file_list_page.build(e.page)
+            self.content_area.content = self.file_list_page.build(self.content_area)
         elif self.select_index_page == 2:
-            self.content_area.content = self.database_info_page.build(e.page)
+            self.content_area.content = self.database_info_page.build(self.content_area)
         else:
-            self.content_area.content = self.maintenance_page.build(e.page)
+            self.content_area.content = self.maintenance_page.build(self.content_area)
         self.content_area.update()
 
     @property

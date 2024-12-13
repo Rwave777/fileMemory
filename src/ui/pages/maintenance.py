@@ -7,10 +7,12 @@ class MaintenancePage:
     def __init__(self, page: ft.Page, file_manager: FileManager):
         self.page = page
         self.file_manager = file_manager
-        self.open_file_checkbox = ft.Checkbox(label="ファイルも開く", value=False)
+        self.open_file_checkbox = ft.Checkbox(
+            label="ファイルも開く(未実装)", value=False
+        )
         # self.tags = self.get_dropdown_optin_tags()
 
-    def build(self, page: ft.Page):
+    def build(self, con: ft.Container):
         # タグ削除用のドロップダウン
         self.tag_dropdown = ft.Dropdown(
             label="削除するタグを選択",

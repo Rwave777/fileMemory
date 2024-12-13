@@ -86,7 +86,7 @@ class FileRow(ft.DataRow):
                     ),
                     tooltip=f"'{filepath}'をコピー",
                     on_click=lambda e: self.copy_path(filepath),
-                    width=250,
+                    width=300,
                     style=ft.ButtonStyle(alignment=ft.alignment.center_left),
                 ),
                 on_double_tap=self.show_edit_dialog,
@@ -192,6 +192,7 @@ class FileRow(ft.DataRow):
             value=self.memo_clone,
             width=400,
             max_lines=3,
+            multiline=True,
             on_change=memo_update,
         )
         # タグを表示するためのコンテナ
@@ -419,7 +420,7 @@ class FileListPage:
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(
-                    ft.Container(ft.Text("パス"), width=250),
+                    ft.Container(ft.Text("パス"), width=300),
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(

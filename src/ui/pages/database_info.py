@@ -135,8 +135,8 @@ class DatabaseInfoPage:
             rows=[],
         )
 
-    def build(self, page: ft.Page):
-        self._update_table_list(page)  # テーブル一覧を更新
+    def build(self, con: ft.Container):
+        self._update_table_list(con.page)  # テーブル一覧を更新
         return ft.Column(
             [
                 ft.Card(
