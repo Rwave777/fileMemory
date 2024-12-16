@@ -1,6 +1,9 @@
 import flet as ft
 import os
+import util.config_manager as conf
+import common.define as define
 from util.util_query import insert_file_joined
+from util.util_conversion import str2bool
 
 
 class FileRow(ft.DataRow):
@@ -36,6 +39,10 @@ class FileRow(ft.DataRow):
         self.memo_clone = memo
         self.tags_clone = self.tags if self.tags else ""
 
+        self.file_open_flg = str2bool(
+            conf.get_config(define.SECTION_FILE_LIST, define.KEY_FILE_OPEN, True)
+        )
+
         # ファイルかフォルダかでアイコンを変更
         icon = (
             ft.icons.FOLDER if os.path.isdir(filepath) else ft.icons.INSERT_DRIVE_FILE
@@ -48,7 +55,7 @@ class FileRow(ft.DataRow):
                     tooltip=(
                         "フォルダを開く"
                         if os.path.isdir(filepath)
-                        else "ファイルの場所とファイルを開く"
+                        else f"ファイルの場所{'とファイル' if self.file_open_flg else ''}を開く"
                     ),
                     on_click=lambda e: self.open_location(filepath),
                 )
@@ -86,7 +93,7 @@ class FileRow(ft.DataRow):
                     ),
                     tooltip=f"'{filepath}'をコピー",
                     on_click=lambda e: self.copy_path(filepath),
-                    width=300,
+                    width=400,
                     style=ft.ButtonStyle(alignment=ft.alignment.center_left),
                 ),
                 on_double_tap=self.show_edit_dialog,
@@ -114,13 +121,32 @@ class FileRow(ft.DataRow):
         super().__init__(cells=cells)
 
     def open_location(self, path):
+        def recursion_dir_path(path) -> str:
+            if not path:
+                return ""
+            elif os.path.exists(path):
+                return path
+            else:
+                return recursion_dir_path(os.path.dirname(path))
+
         """ファイルの場所を開く"""
         if os.path.exists(path):
             if os.path.isdir(path):
                 os.startfile(path)  # フォルダを直接開く
             else:
                 os.startfile(os.path.dirname(path))  # ファイルの場所を開く
-                os.startfile(path)
+                if self.file_open_flg:
+                    os.startfile(path)
+        else:
+            dir_path = recursion_dir_path(path)
+            os.startfile(dir_path)
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(
+                        f"選択したパスのリンクが切れているため、有効なパス({dir_path})を表示"
+                    )
+                )
+            )
 
     def copy_path(self, path):
         """パスをクリップボードにコピー"""
@@ -420,7 +446,7 @@ class FileListPage:
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(
-                    ft.Container(ft.Text("パス"), width=300),
+                    ft.Container(ft.Text("パス"), width=400),
                     on_sort=self.sort_function,
                 ),
                 ft.DataColumn(
@@ -444,6 +470,7 @@ class FileListPage:
         self.search_files()
         self.content_area = con
         self.tag_view_btn = self.get_tags_view_btn()
+        self.set_files_table()
         return ft.Container(  # Containerでラップ
             content=ft.Column(
                 [

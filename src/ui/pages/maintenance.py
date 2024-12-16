@@ -1,4 +1,6 @@
 import flet as ft
+import util.config_manager as conf
+import common.define as define
 from database.file_manager import FileManager
 from util.util_query import delete_tag
 
@@ -7,8 +9,16 @@ class MaintenancePage:
     def __init__(self, page: ft.Page, file_manager: FileManager):
         self.page = page
         self.file_manager = file_manager
+
+        def on_change(e):
+            conf.set_config(
+                define.SECTION_FILE_LIST, define.KEY_FILE_OPEN, e.control.value
+            )
+
         self.open_file_checkbox = ft.Checkbox(
-            label="ファイルも開く(未実装)", value=False
+            label="ファイルも開く",
+            value=conf.get_config(define.SECTION_FILE_LIST, define.KEY_FILE_OPEN, True),
+            on_change=lambda e: on_change(e),
         )
         # self.tags = self.get_dropdown_optin_tags()
 

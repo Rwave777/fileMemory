@@ -38,7 +38,12 @@ class FileRegisterPage:
 
         # 登録ボタン
         self.submit_button = ft.ElevatedButton(
-            text="登録", on_click=self.on_submit, width=500
+            text="登録", on_click=self.on_submit, width=400
+        )
+
+        # クリアボタン
+        self.clear_button = ft.ElevatedButton(
+            text="クリア", on_click=self.on_clear, width=100
         )
 
         # ドロップエリアの作成
@@ -97,9 +102,9 @@ class FileRegisterPage:
             self.tags = cursor.fetchall()
         conn.close()
 
-    def get_tags_view_btn(self):
+    def get_tags_view_btn(self) -> ft.PopupMenuButton:
         # タグ一覧のPopupMenuButtonを更新
-        def tag_select(text):
+        def tag_select(text, e):
             tag_list = [tag for tag in self.tag_input.value.split(",") if not tag == ""]
             tag_list.append(text)
             self.tag_input.value = ",".join(tag_list)
@@ -117,7 +122,9 @@ class FileRegisterPage:
                         vertical_alignment=ft.CrossAxisAlignment.END,
                     ),
                     height=30,
-                    on_click=lambda e: tag_select(e.control.content.controls[1].value),
+                    on_click=lambda e: tag_select(
+                        e.control.content.controls[1].value, e
+                    ),
                 )
                 for tag in self.tags
             ],
@@ -165,7 +172,7 @@ class FileRegisterPage:
                 self.file_path,
                 ft.Row([self.tag_input, self.tag_view_btn]),
                 self.memo,
-                self.submit_button,
+                ft.Row([self.submit_button, self.clear_button]),
                 self.success_message,
             ],
             scroll="auto",
@@ -246,3 +253,13 @@ class FileRegisterPage:
             self.page.show_snack_bar(
                 ft.SnackBar(content=ft.Text(f"{'・'.join(msg_list)}を入力してください"))
             )
+
+    def on_clear(self, e):
+        self.file_name.value = ""
+        self.file_path.value = ""
+        self.tag_input.value = ""
+        self.memo.value = ""
+        self.file_name.update()
+        self.file_path.update()
+        self.tag_input.update()
+        self.memo.update()
