@@ -39,24 +39,39 @@ class FileRow(ft.DataRow):
         self.memo_clone = memo
         self.tags_clone = self.tags if self.tags else ""
 
-        self.file_open_flg = str2bool(
-            conf.get_config(define.SECTION_FILE_LIST, define.KEY_FILE_OPEN, True)
+        self.file_open_type = conf.get_config(
+            define.SECTION_FILE_LIST,
+            define.KEY_FILE_OPEN,
+            define.FILE_OPEN["NONE"]["type"],
         )
 
         # ファイルかフォルダかでアイコンを変更
-        icon = (
-            ft.icons.FOLDER if os.path.isdir(filepath) else ft.icons.INSERT_DRIVE_FILE
+        class IconInfo(object):
+            icon = None
+            color = None
+            tooltip = None
+
+            def __init__(self, icon, color, tooltip):
+                self.icon = icon
+                self.color = color
+                self.tooltip = tooltip
+
+        icon_info: IconInfo = (
+            IconInfo(ft.icons.FOLDER, ft.colors.AMBER, "フォルダを開く")
+            if os.path.isdir(filepath)
+            else IconInfo(
+                ft.icons.INSERT_DRIVE_FILE,
+                ft.colors.CYAN,
+                f"{define.FILE_OPEN[self.file_open_type]['text']}を開く",
+            )
         )
 
         cells = [
             ft.DataCell(
                 ft.IconButton(
-                    icon=icon,
-                    tooltip=(
-                        "フォルダを開く"
-                        if os.path.isdir(filepath)
-                        else f"ファイルの場所{'とファイル' if self.file_open_flg else ''}を開く"
-                    ),
+                    icon=icon_info.icon,
+                    icon_color=icon_info.color,
+                    tooltip=icon_info.tooltip,
                     on_click=lambda e: self.open_location(filepath),
                 )
             ),
@@ -130,12 +145,18 @@ class FileRow(ft.DataRow):
                 return recursion_dir_path(os.path.dirname(path))
 
         """ファイルの場所を開く"""
+        folder_path = path
         if os.path.exists(path):
             if os.path.isdir(path):
                 os.startfile(path)  # フォルダを直接開く
             else:
-                os.startfile(os.path.dirname(path))  # ファイルの場所を開く
-                if self.file_open_flg:
+                folder_path = os.path.dirname(path)
+                if define.FILE_OPEN["NONE"]["type"] == self.file_open_type:
+                    os.startfile(folder_path)  # ファイルの場所を開く
+                elif define.FILE_OPEN["ONLY"]["type"] == self.file_open_type:
+                    os.startfile(path)
+                else:
+                    os.startfile(folder_path)
                     os.startfile(path)
         else:
             dir_path = recursion_dir_path(path)
@@ -147,6 +168,7 @@ class FileRow(ft.DataRow):
                     )
                 )
             )
+            folder_path = dir_path
 
     def copy_path(self, path):
         """パスをクリップボードにコピー"""

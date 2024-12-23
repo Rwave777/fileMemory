@@ -15,9 +15,28 @@ class MaintenancePage:
                 define.SECTION_FILE_LIST, define.KEY_FILE_OPEN, e.control.value
             )
 
-        self.open_file_checkbox = ft.Checkbox(
-            label="ファイルも開く",
-            value=conf.get_config(define.SECTION_FILE_LIST, define.KEY_FILE_OPEN, True),
+        self.open_file_radio = ft.RadioGroup(
+            value=conf.get_config(
+                define.SECTION_FILE_LIST,
+                define.KEY_FILE_OPEN,
+                define.FILE_OPEN["NONE"]["type"],
+            ),
+            content=ft.Row(
+                [
+                    ft.Radio(
+                        value=define.FILE_OPEN["NONE"]["type"],
+                        label=define.FILE_OPEN["NONE"]["text"],
+                    ),
+                    ft.Radio(
+                        value=define.FILE_OPEN["ONLY"]["type"],
+                        label=define.FILE_OPEN["ONLY"]["text"],
+                    ),
+                    ft.Radio(
+                        value=define.FILE_OPEN["BOTH"]["type"],
+                        label=define.FILE_OPEN["BOTH"]["text"],
+                    ),
+                ]
+            ),
             on_change=lambda e: on_change(e),
         )
         # self.tags = self.get_dropdown_optin_tags()
@@ -42,7 +61,8 @@ class MaintenancePage:
                 self.tag_dropdown,
                 delete_tag_button,
                 ft.Divider(),
-                self.open_file_checkbox,
+                ft.Text("ファイルオープン制御", size=18, weight=ft.FontWeight.BOLD),
+                self.open_file_radio,
             ]
         )
         return content

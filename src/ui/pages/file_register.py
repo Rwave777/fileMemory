@@ -203,6 +203,30 @@ class FileRegisterPage:
             self.process_dropped_item(e.path)
 
     def on_submit(self, e):
+        # パスの重複確認
+        conn = self.file_manager.create_connection()
+        with conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT 
+                    *
+                FROM files
+                WHERE filepath =?
+            """
+            cursor.execute(query, (self.file_path.value,))
+            res = cursor.fetchone()
+        conn.close()
+        if res:
+            print(res)
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(
+                        f"登録済みのパスです。[ 名称: {res[1]} 、パス: {res[2]} ]"
+                    )
+                )
+            )
+
+        # 登録条件確認
         if (
             self.file_name.value
             and self.file_path.value
